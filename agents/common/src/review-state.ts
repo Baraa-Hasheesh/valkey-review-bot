@@ -48,7 +48,7 @@ export const reviewStateSchema = z.object({
   direction: z.string().default('').describe('A different approach for the whole PR, only if you checked it against the code and it is clearly better than what the PR does. Empty otherwise.'),
   related: z.array(z.object({
     number: z.number().int().positive().describe('The issue or PR number in this repository.'),
-    kind: z.enum(['possible_duplicate', 'related']).describe('"possible_duplicate" when it fixes the same bug or adds the same feature as this PR, checked against its diff or description. "related" when it touches the same code or problem in a way a reviewer should know about.'),
+    kind: z.enum(['possible_duplicate', 'related']).describe('"possible_duplicate" when it appears to address the same bug or feature as this PR, checked against its diff or description. "related" when it touches the same code or problem in a way the maintainers may want to see.'),
     summary: z.string().min(1).describe('One short sentence on the overlap, e.g. "Fixes the same NULL deref in clusterNodeCoversSlot, open since March."'),
   })).default([]).describe('Other issues and PRs a maintainer should weigh with this one. A flag for maintainers, not a finding: it never blocks. Carry over earlier entries unless shown wrong. Empty when nothing checked out.'),
 });

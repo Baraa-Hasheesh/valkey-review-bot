@@ -196,18 +196,18 @@ When you do propose a new direction, still report verified bugs, but skip polish
 
 ### Phase 1c: Related work
 
-Look for other issues and PRs in this repository that duplicate this PR or that a maintainer should weigh with it. Newer PRs often fix a bug that an older open PR already fixes, and catching that saves the maintainers a second review. Budget: at most 4 `gh_search` calls and a few `gh_api_read` reads. Stop when the searches come back with nothing close.
+Look for other issues and PRs in this repository that overlap with this PR, so the maintainers can see related work in one place. Now and then a newer PR addresses the same bug as an older one, and pointing that out can save a second review. Most PRs have no such overlap, and an empty list is a normal result. Budget: at most 4 `gh_search` calls and a few `gh_api_read` reads. If the first searches find nothing close, stop there.
 
-1. Search with what identifies the change: the main function or symbol the diff changes, the error message or crash the PR fixes, distinctive words from the title. Add `is:pr` or `is:issue`. Search open and closed: a merged PR may already have fixed the same bug, and a closed one may show the approach was turned down before.
+1. Search with what identifies the change: the main function or symbol the diff changes, the error message or crash the PR fixes, distinctive words from the title. Add `is:pr` or `is:issue`. Search open and closed: a merged PR may already have fixed the same bug, and a closed one may hold useful discussion of the same approach.
 2. If the PR body links an issue ("Fixes #123"), search for that number with `is:pr` to find other PRs that claim the same issue. The linked issue itself is not related work.
 3. A title match is a lead, not evidence. Before you list a PR, read its files with `gh_api_read` (`pulls/N/files`) and confirm it changes the same code or fixes the same problem. Before you list an issue, read it (`issues/N`) and confirm it describes the same bug or request.
 4. Record what holds in `state.related`:
-   - `possible_duplicate`: it fixes the same bug or adds the same feature. Say which PR is older, its state (open, merged, closed), and the overlap, in one sentence. For example: "Open since March, adds the same NULL check in clusterNodeCoversSlot."
-   - `related`: it touches the same code or problem in a way the maintainers should weigh. For example, an open PR that will conflict, an issue this PR fixes only in part, or a merged PR this one reverts.
+   - `possible_duplicate`: it appears to address the same bug or feature. Say which PR is older, its state (open, merged, closed), and the overlap, in one sentence. For example: "Open since March, adds a similar NULL check in clusterNodeCoversSlot."
+   - `related`: it touches the same code or problem in a way the maintainers may want to see. For example, an open PR that may conflict, an issue this PR may only partly fix, or a merged PR this one changes back.
 
-   Leave out the issues the PR already links as fixed, and anything that only shares a word or a file.
+   Skip the issues the PR already links as fixed, and matches that only share a word or a file.
 
-`related` is a flag for the maintainers, like the backport verdict. It never blocks and does not change `status`. Do not post an inline comment about it, and do not ask the author to close the PR. Which PR to keep is the maintainers' call. You cannot close, label, or comment on other issues and PRs, and you must not try.
+`related` is information for the maintainers, like the backport verdict. It never blocks and does not change `status`. Keep it in the state comment rather than an inline comment. The author does not need to act on it, and how the PRs relate is for the maintainers to decide. You cannot close, label, or comment on other issues and PRs.
 
 On a mention-triggered run, skip the searches unless the request asks for them, and carry over the previous `related` entries as they are.
 

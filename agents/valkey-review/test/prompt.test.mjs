@@ -108,7 +108,7 @@ test('the related-work phase searches, checks, and flags without acting on other
   assert.match(phase, /`gh_search`/);
   assert.match(phase, /A title match is a lead, not evidence\./);
   assert.match(phase, /never blocks and does not change `status`/);
-  assert.match(phase, /You cannot close, label, or comment on other issues and PRs/);
+  assert.match(phase, /You cannot close, label, or comment on other issues and PRs\./);
   // The state section carries entries over like findings.
   assert.ok(prompt.split('\n').some((l) => l.startsWith('- **Related.** Carry over the `related` entries')));
 });
