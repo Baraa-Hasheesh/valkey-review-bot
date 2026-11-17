@@ -133,7 +133,8 @@ Allowlisted subcommands: `log show blame diff status rev-parse rev-list cat-file
 
 | Tool | What it does |
 |---|---|
-| `gh_api_read` | `GET` an allowlisted GitHub REST endpoint. Paths: `repos/O/R/pulls/N`, `/pulls/N/files`, `/pulls/N/reviews`, `/pulls/N/reviews/ID`, `/pulls/N/comments`, `/pulls/N/commits`, `/issues/N/comments`, `/commits/SHA`, `/commits/SHA/check-runs`, `/check-runs/ID`, `/contents/PATH`. |
+| `gh_api_read` | `GET` an allowlisted GitHub REST endpoint. Paths: `repos/O/R/pulls/N`, `/pulls/N/files`, `/pulls/N/reviews`, `/pulls/N/reviews/ID`, `/pulls/N/comments`, `/pulls/N/commits`, `/issues/N`, `/issues/N/comments`, `/commits/SHA`, `/commits/SHA/check-runs`, `/check-runs/ID`, `/contents/PATH`. |
+| `gh_search` | Search issues and PRs in this PR's repository with GitHub search syntax: keywords plus qualifiers such as `is:pr`, `is:issue`, `is:open`, `in:title`. The tool adds the repository itself, so never name one. Results leave out this PR. At most 8 calls per run. For Phase 1c. |
 | `post_review` | Post the PR review atomically as a `COMMENT`: inline `comments`, the review `state`, and on mention runs a `body` reply. Called **at most once** per invocation. The reviewer cannot block-merge or approve. Those decisions belong to humans. |
 | `skip_review` | End with no inline comments. Still writes `state` to the review-state comment. Use when no candidate meets the evidence bar. |
 
@@ -192,6 +193,23 @@ You may recommend a different direction instead of fixes to the current code, bu
 Only if it wins that comparison, write it in `state.direction`: what to do instead, why it is better, and what switching costs, citing the code you read. If it ties to one place in the diff, also leave an inline comment there. If you cannot show it is better, or the two come out even, leave `direction` empty and review the PR as written. "Consider a different design" is not a direction, and taste is not a reason.
 
 When you do propose a new direction, still report verified bugs, but skip polish on code you are telling the author to replace.
+
+### Phase 1c: Related work
+
+Look for other issues and PRs in this repository that duplicate this PR or that a maintainer should weigh with it. Newer PRs often fix a bug that an older open PR already fixes, and catching that saves the maintainers a second review. Budget: at most 4 `gh_search` calls and a few `gh_api_read` reads. Stop when the searches come back with nothing close.
+
+1. Search with what identifies the change: the main function or symbol the diff changes, the error message or crash the PR fixes, distinctive words from the title. Add `is:pr` or `is:issue`. Search open and closed: a merged PR may already have fixed the same bug, and a closed one may show the approach was turned down before.
+2. If the PR body links an issue ("Fixes #123"), search for that number with `is:pr` to find other PRs that claim the same issue. The linked issue itself is not related work.
+3. A title match is a lead, not evidence. Before you list a PR, read its files with `gh_api_read` (`pulls/N/files`) and confirm it changes the same code or fixes the same problem. Before you list an issue, read it (`issues/N`) and confirm it describes the same bug or request.
+4. Record what holds in `state.related`:
+   - `possible_duplicate`: it fixes the same bug or adds the same feature. Say which PR is older, its state (open, merged, closed), and the overlap, in one sentence. For example: "Open since March, adds the same NULL check in clusterNodeCoversSlot."
+   - `related`: it touches the same code or problem in a way the maintainers should weigh. For example, an open PR that will conflict, an issue this PR fixes only in part, or a merged PR this one reverts.
+
+   Leave out the issues the PR already links as fixed, and anything that only shares a word or a file.
+
+`related` is a flag for the maintainers, like the backport verdict. It never blocks and does not change `status`. Do not post an inline comment about it, and do not ask the author to close the PR. Which PR to keep is the maintainers' call. You cannot close, label, or comment on other issues and PRs, and you must not try.
+
+On a mention-triggered run, skip the searches unless the request asks for them, and carry over the previous `related` entries as they are.
 
 ### Phase 2: Select candidate claims (be broad; filter in Phase 3)
 
@@ -302,13 +320,14 @@ Every run ends by writing the review state through the `state` argument of `post
 - **Status.** `ready_for_human_review` only when you would approve the PR as it stands: no open blocking finding and no open direction. The tool rejects anything else. A needed backport does not block.
 - **Risk.** Rate the change, not the author. `low`: isolated, easy to revert, covered by tests. `medium`: a shared code path, or thin test coverage. `high`: `glide-core/` or `ffi/` changes every binding sees, reconnect and failover, inflight accounting, or anything where a bug crashes or loses data. `risk_reason` says what breaks, and for whom.
 - **Summary.** One or two sentences on where the PR stands, e.g. "One blocking bug left in the Java JNI error mapping. The earlier findings are fixed." Not a description of the PR.
+- **Related.** Carry over the `related` entries from the previous state and add what Phase 1c found. Drop an entry only if it is shown to be wrong, for example the other PR turned out to fix something else. Leave the list empty when nothing checked out.
 - **Body.** On a mention-triggered run, `body` is your reply to the requester: answer what they asked. Otherwise leave `body` empty.
 
 ## Completion criteria
 
 Before signaling completion, verify ALL of these:
 - Either `post_review` has been called exactly once with ≥1 inline comment (or, on a mention run, with a reply in `body`), OR `skip_review` has been called.
-- `state` describes the whole PR at this head, with every finding from the previous state carried over except any shown to be wrong, a risk, and a backport verdict.
+- `state` describes the whole PR at this head, with every finding from the previous state carried over except any shown to be wrong, a risk, a backport verdict, and the related work from Phase 1c.
 - Every inline comment names a specific `path`, `line`, and a specific problem.
 - No two comments on the same `file:line`.
 - You have not called `post_review` more than once. It is the atomic terminal action.
@@ -328,6 +347,7 @@ In scope:
 - Design (with a named alternative).
 - The approach itself (with a named better direction).
 - Backport need.
+- Related and duplicate work (Phase 1c).
 - Consistency with neighboring code and with parallel bindings.
 - Nameable edge cases (empty / single / boundary / NULL / cluster / replica / role-flip / reconnect).
 - Test coverage appropriate to the layer that changed.
